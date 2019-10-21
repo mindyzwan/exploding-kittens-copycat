@@ -1,9 +1,9 @@
 
 # NEXT TO DO:
-# Add favor capability
 # Add default computer activity
 # Add nope capability
-# If card doesn't apply, error messagee
+# refactor activate_card
+# If card doesn't apply, error message
 
 
 import random
@@ -76,6 +76,12 @@ class Card():
       'name': 'Attack',
       'phrase': ['Fire the crab-a-pult', 'Deploy the thousand-year back hair', 'Awaken the bear-o-dactyl', 'Unleash the catterwocky'],
       'type': 'attack',
+      'start_count': 4
+    },
+    'favor': {
+      'name': 'Favor',
+      'phrase': ['Rub peanut butter on your belly button and make some new friends', 'Take your friends bearrd-sailing on your beard boat', 'Get enslaved by party squirrels', 'Ask for a back hair shampoo'],
+      'type': 'favor',
       'start_count': 4
     }
   }
@@ -197,7 +203,8 @@ class Turn():
     card = self.player.hand.cards[card_index]
     hand = self.player.hand
     
-    print(f'\n\n{self.player.name} played {card.name} {card.phrase}')
+    print(f'\n\n{self.player.name} played {card.name} ({card.phrase})')
+
     if card.function == 'skip':
       self.skip_turn = True
       hand.play_card(card_index)
@@ -213,15 +220,20 @@ class Turn():
       self.play_future(self.game)
       hand.play_card(card_index)
     elif card.function == 'attack':
-      self.attack(self.game)
+      self.play_attack(self.game)
       hand.play_card(card_index)
+    elif card.function == 'favor':
+      random_index = random.randint(0, len(self.opponent.hand.cards) - 1)
+      self.play_favor(random_index)
+      hand.play_card(card_index)
+    else:
+      print('\nThat card can\'t be used right now!')
 
-  def attack(self, game):
+  def play_attack(self, game):
     self.skip_turn = True
     self.extra_opponent_turn += 1
     print('\n\nYou do not need to draw this turn!')
     print(f'{self.opponent.name} now has to take an extra turn\n\n')
-    input('Press enter to continue ')
 
   def play_future(self, game):
     next_three = game.deck.deck[-1:-4:-1]
@@ -229,10 +241,7 @@ class Turn():
     if self.player.species == 'Human':
       print('\nThe next three cards are:')
       for card in next_three:
-        print(card.name)
-    
-    input('\n\nPress enter to continue ')
-        
+        print(f'\t - {card.name}') 
     
   def check_pair_exist(self, first_card):
     pair_count = 0
@@ -253,13 +262,15 @@ class Turn():
 
     hand.play_card(second_card_index)
     print(f'\nA pair has been found! {self.player.name} gets to steal a card.')
-    self.steal_card()
+    random_card = random.randint(0, len(self.opponent.hand.cards) - 1)
+    self.steal_card(random_card)
 
-  def steal_card(self):
-    opponent_hand = self.opponent.hand
-    card_index = random.randint(0, len(opponent_hand.cards) - 1)
-    stolen_card = opponent_hand.get_card_stolen(card_index)
-    print(f'Stolen card: {stolen_card}')
+  def play_favor(self, card_index):
+    self.steal_card(card_index)
+
+  def steal_card(self, card_index):
+    stolen_card = self.opponent.hand.get_card_stolen(card_index)
+    print(f'Card received: {stolen_card}')
     self.player.hand.steal_card(stolen_card)
 
   def return_defuse_card_index(self, game):
@@ -276,6 +287,7 @@ class Turn():
     self.game.exploded = False
     card_phrase = self.player.hand.cards[card_index].phrase
     self.player.hand.play_card(card_index)
+    self.player.hand.play_card(-1)
     print(f'\t{self.player.name} DEFUSED THE KITTEN, {card_phrase}\n\n')
 
   def attack_end(self):
@@ -349,6 +361,7 @@ class Game():
   def __init__(self):
     self.deck = Deck()
     os.system('cls||clear')
+    self.deck.print_cards()
     print('Welcome to Exploding Kittens!')
 
     self.human_hand = Hand(self.deck)
