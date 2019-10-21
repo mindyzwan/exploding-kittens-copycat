@@ -1,13 +1,14 @@
 
 # NEXT TO DO:
 # Add favor capability
-# Add attack capability
 # Add default computer activity
 # Add nope capability
+# If card doesn't apply, error messagee
 
 
 import random
 import os
+import re
 
 class Card():
   types = {
@@ -163,7 +164,7 @@ class Hand():
 
   def show_cards(self):
     self.sort_hand()
-    print('---------------------------')
+    print('\n---------------------------')
     print('Your Hand:')
     card_number = 1
     for card in self.cards:
@@ -196,13 +197,15 @@ class Turn():
     card = self.player.hand.cards[card_index]
     hand = self.player.hand
     
-    print(f'\n\n{self.player.name} played {card.name}.')
-    print(f'{card.phrase}')
+    print(f'\n\n{self.player.name} played {card.name} {card.phrase}')
     if card.function == 'skip':
       self.skip_turn = True
       hand.play_card(card_index)
     elif card.function == 'pair_card':
-      if self.check_pair_exist(card): self.play_pair(card_index)
+      if self.check_pair_exist(card): 
+        self.play_pair(card_index)
+      else:
+        print('\nNo matching pair found! Card will go back into your hand')
     elif card.function == 'shuffle':
       self.game.deck.shuffle()
       hand.play_card(card_index)
@@ -259,39 +262,43 @@ class Turn():
     print(f'Stolen card: {stolen_card}')
     self.player.hand.steal_card(stolen_card)
 
-  def check_for_defuse_card(self, game):
+  def return_defuse_card_index(self, game):
     card_index = 0
 
     for card in self.player.hand.cards:
       if card.name == 'Defuse':
-        game.exploded = False
-        card_phrase = self.player.hand.cards[card_index].phrase
-        self.player.hand.play_card(card_index)
-        print(f'\t{self.player.name} DEFUSED THE KITTEN, {card_phrase}\n\n')
+        return card_index
       card_index += 1
+    
+    return None
+
+  def defuse(self, card_index):
+    self.game.exploded = False
+    card_phrase = self.player.hand.cards[card_index].phrase
+    self.player.hand.play_card(card_index)
+    print(f'\t{self.player.name} DEFUSED THE KITTEN, {card_phrase}\n\n')
 
   def attack_end(self):
     for _ in range(self.extra_opponent_turn):
       os.system('cls||clear')
       self.game.take_turn(self.opponent)
   
-  def end_turn(self, game):
+  def end_turn(self):
     self.player.hand.draw_new_card()
-    if self.player.species == 'Human':
-      input(f'\nPress enter to finish your turn by drawing a card. ')
-      print(f'\n\t> You drew: {self.player.hand.cards[-1]}\n\n\n')
-    else:
-      print(f'- {self.player.name} drew a card -\n')
     if self.player.hand.cards[-1].name == 'Exploding Kitten':
-      game.exploded = True
-    if game.exploded:
-      self.check_for_defuse_card(game)
-
+      self.game.exploded = True
+      defuse_card_index = self.return_defuse_card_index(self.game)
+      if defuse_card_index != None:
+        self.defuse(defuse_card_index)
 
 class ComputerTurn(Turn):
   def __init__(self, player, opponent, game):
     super().__init__(player, opponent, game)
-    self.end_turn(game)
+    self.end_turn()
+
+  def end_turn(self):
+    super().end_turn()
+    print(f'- {self.player.name} drew a card -\n')
 
 class HumanTurn(Turn):
   def __init__(self, player, opponent, game):
@@ -300,36 +307,43 @@ class HumanTurn(Turn):
     self.game = game
 
     self.play_cards()
-    if not self.skip_turn: self.end_turn(game)
+    if not self.skip_turn: self.end_turn()
     self.attack_end()
 
   def play_cards(self):
-    self.player.hand.show_cards()
-    answer = input(f'Would you like to play a card? (y/n) ')
-    play_card = (answer == 'y')
+    play_card = True
+    num_cards = len(self.player.hand.cards)
 
     while play_card:
-      card_index = self.choose_card()
-      self.activate_card(card_index)
-      os.system('cls||clear')
-      self.player.hand.show_cards()
+      response = self.get_input()
 
-      answer = input(f'Would you like to play another card? (y/n) ')
-      play_card = (answer == 'y')
+      if response == 'q': 
+        self.game.quit = True
+        print('Quitting...')
+        break
+      elif re.match(r'[\d]', response) and int(response) in list(range(1, num_cards + 1)):
+        self.activate_card(int(response) - 1)
+        input('\nPress enter to continue ')
+      else:
+        break
+
+      os.system('cls||clear')
+
+  def get_input(self):
+    self.player.hand.show_cards()
+    print(f'To play a card, enter the corresponding digit above')
+    print(f'To end your turn by drawing a card, press enter')
+    print(f'Enter \'q\' to quit')
+    response = input('\n\tEnter response > ')
+    return response
       
-  def end_turn(self, game):
-    super().end_turn(game)
+  def end_turn(self):
+    if self.game.quit: return
+    super().end_turn()
+    print(f'\n- You drew: {self.player.hand.cards[-1]} -\n\n\n')
     for _ in range(self.extra_opponent_turn):
       ComputerTurn(self.opponent, self.player, self.game)
       if self.game.exploded: self.game.explode(self.opponent)
-
-  def choose_card(self):
-    choice = -1
-    hand_size = len(self.player.hand.cards)
-    while not choice in range(0, hand_size):
-      choice = int(input('Choose a card: ' )) - 1
-
-    return choice
 
 class Game():
   def __init__(self):
@@ -344,6 +358,7 @@ class Game():
     self.computer = Computer(self.computer_hand)
 
     self.exploded = False
+    self.quit = False
     input(f'\n\nPress enter to continue  ')
     os.system('cls||clear')
 
@@ -352,9 +367,10 @@ class Game():
     pass
 
   def explode(self, player):
+    print('\n\n')
     print(player.hand.cards[-1].phrase)
-    print('\n\nBOOOOOOOOOOMMMMMMM!!!!!\n\n')
-    print(f'{player.name} lost!\n\n')
+    print('BOOOOOOOOOOMMMMMMM!!!!!\n\n')
+    print(f'{player.name} drew an Exploding Kitten and lost!\n\n')
   
   def take_turn(self, player):
     if player.species == 'Human':
@@ -372,8 +388,9 @@ class Game():
       for player in [self.human, self.computer]:
         self.take_turn(player)
         if self.exploded: break
+        if self.quit: return
         
-        input(f'Press enter to continue')
+        input(f'Press enter to continue ')
         os.system('cls||clear')
 
 new_game = Game()
