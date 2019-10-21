@@ -1,6 +1,6 @@
 
 # NEXT TO DO:
-# Add see the future capability
+# Add favor capability
 # Add attack capability
 # Add default computer activity
 # Add nope capability
@@ -70,6 +70,12 @@ class Card():
       'phrase': ['Rub the belly of a pig-a-corn', 'Summon the mantis shrimp', 'Feast upon a unicorn enchilada and gain its enchilada powers', 'Ask the all-seeing goat wizard', 'Deploy the special-ops bunnies'],
       'type': "see_the_future",
       'start_count': 5
+    },
+    'attack': {
+      'name': 'Attack',
+      'phrase': ['Fire the crab-a-pult', 'Deploy the thousand-year back hair', 'Awaken the bear-o-dactyl', 'Unleash the catterwocky'],
+      'type': 'attack',
+      'start_count': 4
     }
   }
   
@@ -183,6 +189,7 @@ class Turn():
     self.player = player
     self.game = game
     self.opponent = opponent
+    self.extra_opponent_turn = 0
     print(f'{player.name.upper()}\'S TURN\n')
 
   def activate_card(self, card_index):
@@ -202,7 +209,16 @@ class Turn():
     elif card.function == 'see_the_future':
       self.play_future(self.game)
       hand.play_card(card_index)
+    elif card.function == 'attack':
+      self.attack(self.game)
+      hand.play_card(card_index)
 
+  def attack(self, game):
+    self.skip_turn = True
+    self.extra_opponent_turn += 1
+    print('\n\nYou do not need to draw this turn!')
+    print(f'{self.opponent.name} now has to take an extra turn\n\n')
+    input('Press enter to continue ')
 
   def play_future(self, game):
     next_three = game.deck.deck[-1:-4:-1]
@@ -254,6 +270,11 @@ class Turn():
         print(f'\t{self.player.name} DEFUSED THE KITTEN, {card_phrase}\n\n')
       card_index += 1
 
+  def attack_end(self):
+    for _ in range(self.extra_opponent_turn):
+      os.system('cls||clear')
+      self.game.take_turn(self.opponent)
+  
   def end_turn(self, game):
     self.player.hand.draw_new_card()
     if self.player.species == 'Human':
@@ -272,7 +293,6 @@ class ComputerTurn(Turn):
     super().__init__(player, opponent, game)
     self.end_turn(game)
 
-
 class HumanTurn(Turn):
   def __init__(self, player, opponent, game):
     super().__init__(player, opponent, game)
@@ -281,6 +301,7 @@ class HumanTurn(Turn):
 
     self.play_cards()
     if not self.skip_turn: self.end_turn(game)
+    self.attack_end()
 
   def play_cards(self):
     self.player.hand.show_cards()
@@ -296,7 +317,11 @@ class HumanTurn(Turn):
       answer = input(f'Would you like to play another card? (y/n) ')
       play_card = (answer == 'y')
       
-
+  def end_turn(self, game):
+    super().end_turn(game)
+    for _ in range(self.extra_opponent_turn):
+      ComputerTurn(self.opponent, self.player, self.game)
+      if self.game.exploded: self.game.explode(self.opponent)
 
   def choose_card(self):
     choice = -1
@@ -326,26 +351,30 @@ class Game():
   def list_rules(self):
     pass
 
+  def explode(self, player):
+    print(player.hand.cards[-1].phrase)
+    print('\n\nBOOOOOOOOOOMMMMMMM!!!!!\n\n')
+    print(f'{player.name} lost!\n\n')
+  
+  def take_turn(self, player):
+    if player.species == 'Human':
+      HumanTurn(player, self.computer, self)
+    else:
+      ComputerTurn(player, self.human, self)
+    if self.exploded: 
+          self.explode(player)
+
   def play(self):
     for _ in range(5):
       self.deck.insert_exploding_kitten_cards()
 
     while not self.exploded:
       for player in [self.human, self.computer]:
-        if player.species == 'Human':
-          HumanTurn(player, self.computer, self)
-        else:
-          ComputerTurn(player, self.computer, self)
-
-        if self.exploded: 
-          print(player.hand.cards[-1].phrase)
-          print('\n\nBOOOOOOOOOOMMMMMMM!!!!!\n\n')
-          print(f'{player.name} lost!\n\n')
-          break
+        self.take_turn(player)
+        if self.exploded: break
         
         input(f'Press enter to continue')
         os.system('cls||clear')
-
 
 new_game = Game()
 new_game.play()
