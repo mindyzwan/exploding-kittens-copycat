@@ -1,6 +1,5 @@
 
 # NEXT TO DO:
-# Add shuffle capability
 # Add see the future capability
 # Add attack capability
 # Add default computer activity
@@ -65,6 +64,12 @@ class Card():
       'phrase': ['An electromagnetic pomeranian storm rolls in from the east', 'Abracrab Lincoln is elected president', 'A plague of bat farts descends from the sky', 'A trandimensional litter box materializes'],
       'type': 'shuffle',
       'start_count': 4
+    },
+    'see_the_future': {
+      'name': 'See the Future',
+      'phrase': ['Rub the belly of a pig-a-corn', 'Summon the mantis shrimp', 'Feast upon a unicorn enchilada and gain its enchilada powers', 'Ask the all-seeing goat wizard', 'Deploy the special-ops bunnies'],
+      'type': "see_the_future",
+      'start_count': 5
     }
   }
   
@@ -184,6 +189,8 @@ class Turn():
     card = self.player.hand.cards[card_index]
     hand = self.player.hand
     
+    print(f'\n\n{self.player.name} played {card.name}.')
+    print(f'{card.phrase}')
     if card.function == 'skip':
       self.skip_turn = True
       hand.play_card(card_index)
@@ -192,8 +199,22 @@ class Turn():
     elif card.function == 'shuffle':
       self.game.deck.shuffle()
       hand.play_card(card_index)
+    elif card.function == 'see_the_future':
+      self.play_future(self.game)
+      hand.play_card(card_index)
 
 
+  def play_future(self, game):
+    next_three = game.deck.deck[-1:-4:-1]
+
+    if self.player.species == 'Human':
+      print('\nThe next three cards are:')
+      for card in next_three:
+        print(card.name)
+    
+    input('\n\nPress enter to continue ')
+        
+    
   def check_pair_exist(self, first_card):
     pair_count = 0
     for card in self.player.hand.cards:
