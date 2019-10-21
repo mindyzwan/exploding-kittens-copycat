@@ -59,6 +59,12 @@ class Card():
       'phrase': ['Crab walk with some crabs', 'Engage the hypergoat', 'Don a portable cheetah butt', 'Commandeer a bunnyraptor'],
       'type': 'skip',
       'start_count': 4
+    },
+    'shuffle': {
+      'name': 'Shuffle',
+      'phrase': ['An electromagnetic pomeranian storm rolls in from the east', 'Abracrab Lincoln is elected president', 'A plague of bat farts descends from the sky', 'A trandimensional litter box materializes'],
+      'type': 'shuffle',
+      'start_count': 4
     }
   }
   
@@ -111,6 +117,9 @@ class Deck():
   def draw_card(self, hand):
     hand.cards.append(self.deck.pop())
 
+  def shuffle(self):
+    random.shuffle(self.deck)
+
 class Player():
   def __init__(self, hand):
     self.hand = hand
@@ -138,7 +147,11 @@ class Hand():
   def get_starting_hand(self):
     self.deck.deal_starting_hand(self)
 
+  def sort_hand(self):
+    self.cards = sorted(self.cards, key=lambda x: x.name)
+
   def show_cards(self):
+    self.sort_hand()
     print('---------------------------')
     print('Your Hand:')
     card_number = 1
@@ -169,12 +182,17 @@ class Turn():
 
   def activate_card(self, card_index):
     card = self.player.hand.cards[card_index]
+    hand = self.player.hand
     
     if card.function == 'skip':
       self.skip_turn = True
-      self.player.hand.play_card(card_index)
+      hand.play_card(card_index)
     elif card.function == 'pair_card':
       if self.check_pair_exist(card): self.play_pair(card_index)
+    elif card.function == 'shuffle':
+      self.game.deck.shuffle()
+      hand.play_card(card_index)
+
 
   def check_pair_exist(self, first_card):
     pair_count = 0
