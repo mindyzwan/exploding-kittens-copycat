@@ -4,6 +4,7 @@
 # Add nope capability
 # refactor activate_card
 # If card doesn't apply, error message
+# 2nd turn after attack on first of two turns doesn't happen
 
 
 import random
@@ -115,7 +116,7 @@ class Card():
             'name': 'Favor',
             'phrase': [
                 'Rub peanut butter on your belly button & make new friends',
-                'Take your friends bearrd-sailing on your beard boat',
+                'Take your friends beard-sailing on your beard boat',
                 'Get enslaved by party squirrels',
                 'Ask for a back hair shampoo'
                 ],
@@ -123,6 +124,8 @@ class Card():
             'start_count': 4
         }
     }
+
+    pair_types = ['Hairy Potato Cat', 'Cattermelon', 'Rainbow-Ralphing Cat', 'Beard Cat', 'Tacocat']
 
     def __init__(self, value):
         self.name = self.types[value]['name']
@@ -192,7 +195,8 @@ class Computer(Player):
     def __init__(self, hand):
         super().__init__(hand)
         self.name = random.choice(
-            ['R2D2', 'C-3PO', 'HAL', 'GWB-666', 'Alexa', 'Siri', 'Cortana'])
+            ['R2D2', 'C-3PO', 'HAL', 'GWB-666', 'Alexa', 'Siri', 'Cortana']
+            )
         print(f'You\'ll be playing against {self.name}.')
         self.species = 'Computer'
 
@@ -211,8 +215,7 @@ class Hand():
 
     def show_cards(self):
         self.sort_hand()
-        print('\n---------------------------')
-        print('Your Hand:')
+        print('\nYour Hand:')
         card_number = 1
         for card in self.cards:
             print(f'{card_number} : {card}')
@@ -249,7 +252,7 @@ class Turn():
         self.game = game
         self.opponent = opponent
         self.extra_opponent_turn = 0
-        print(f'{player.name.upper()}\'S TURN\n')
+        print(f'\n\n\n\n***  {player.name.upper()}\'S TURN  ***')
 
     def activate_card(self, card_index):
         card = self.player.hand.cards[card_index]
@@ -351,7 +354,7 @@ class Turn():
 
     def attack_end(self):
         for _ in range(self.extra_opponent_turn):
-            os.system('cls||clear')
+            
             self.game.take_turn(self.opponent)
 
     def end_turn(self):
@@ -372,15 +375,16 @@ class ComputerTurn(Turn):
 
     def end_turn(self):
         super().end_turn()
-        print(f'- {self.player.name} drew a card -\n')
+        print(f'\n- {self.player.name} drew a card -\n')
+        print('\n---------------------------\n')
 
     def play_cards(self):
         self.player.hand.show_cards()
-        if self.get_playable_card() is not None:
+        while self.get_playable_card() is not None:
             print('There is a playable card')
-            self.activate_card(self.get_playable_card())
-        else:
-            return
+            card_index = self.get_playable_card()
+            self.activate_card(card_index)
+            input('Press enter to continue ')
 
     def get_playable_card(self):
         functions = [card.function for card in self.player.hand.cards]
@@ -388,15 +392,15 @@ class ComputerTurn(Turn):
         # conditional_1 = 'see_the_future' in functions and
         # ('attack' in functions or 'skip' in functions or 'shuffle'
         # in functions)
-        conditional_2 = functions.count('pair_card') >= 2
-        conditional_3 = 'favor' in functions
-        conditional_4 = 'attack' in functions
+        play_2 = self.check_pair()								
+        play_3 = 'favor' in functions
+        play_4 = 'attack' in functions
 
-        if conditional_3:
+        if play_3:
             return functions.index('favor')
-        elif conditional_2:
-            return functions.index('pair_card')
-        elif conditional_4:
+        elif play_2:
+            return self.get_pair_index() 
+        elif play_4:
             return functions.index('attack')
 
         # def play_future_sequence(self, functions_list):
@@ -404,6 +408,25 @@ class ComputerTurn(Turn):
         #       attack_index = functions.index('attack')
         #       skip_index = functions.index('skip')
         #       shuffle_index = functions.index('shuffle')
+    def check_pair(self):
+        pair_cards_in_hand = [card.name for card in self.player.hand.cards if card.function == 'pair_card']
+
+        for card_template in Card.pair_types:
+            if pair_cards_in_hand.count(card_template) >= 2:
+                return True 
+        return False
+
+    def get_pair_index(self):
+        pair_cards_in_hand = [card.name for card in self.player.hand.cards if card.function == 'pair_card']
+        names = [card.name for card in self.player.hand.cards]
+
+        for card_template in Card.pair_types:
+            if pair_cards_in_hand.count(card_template) >= 2: 
+                return names.index(card_template)
+
+				
+
+
 
 
 class HumanTurn(Turn):
@@ -435,7 +458,7 @@ class HumanTurn(Turn):
             else:
                 break
 
-        os.system('cls||clear')
+        
 
     def get_input(self):
         self.player.hand.show_cards()
@@ -460,7 +483,7 @@ class HumanTurn(Turn):
 class Game():
     def __init__(self):
         self.deck = Deck()
-        os.system('cls||clear')
+        
         print('Welcome to Exploding Kittens!')
 
         self.human_hand = Hand(self.deck)
@@ -472,7 +495,7 @@ class Game():
         self.exploded = False
         self.quit = False
         input(f'\n\nPress enter to continue  ')
-        os.system('cls||clear')
+        
 
     def list_rules(self):
         pass
@@ -488,8 +511,8 @@ class Game():
             HumanTurn(player, self.computer, self)
         else:
             ComputerTurn(player, self.human, self)
-            if self.exploded:
-                self.explode(player)
+        if self.exploded:
+            self.explode(player)
 
     def play(self):
         for _ in range(5):
@@ -504,7 +527,7 @@ class Game():
                     return
 
             input(f'Press enter to continue ')
-            os.system('cls||clear')
+            
 
 
 new_game = Game()

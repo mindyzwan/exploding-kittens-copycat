@@ -1,3 +1,5 @@
 {
-	"editor.detectIndentation": false
+	"editor.detectIndentation": false,
+	"python.linting.enabled": false,
+	"python.pythonPath": "/usr/local/bin/python3"
 }
