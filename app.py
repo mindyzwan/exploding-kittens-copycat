@@ -1,6 +1,6 @@
 
 # NEXT TO DO:
-# Add default computer activity
+# Fix see the future capability - not playing attack/skip/shuffle
 # Add nope capability
 # refactor activate_card
 # If card doesn't apply, error message
@@ -252,6 +252,7 @@ class Turn():
         self.game = game
         self.opponent = opponent
         self.extra_opponent_turn = 0
+        self.next_three = []
         print(f'\n\n\n\n***  {player.name.upper()}\'S TURN  ***')
 
     def activate_card(self, card_index):
@@ -291,15 +292,7 @@ class Turn():
         print(f'{self.opponent.name} now has to take an extra turn\n\n')
 
     def play_future(self, game):
-        next_three = game.deck.deck[-1:-4:-1]
-
-        if self.player.species == 'Human':
-            print('\nThe next three cards are:')
-            for card in next_three:
-                print(f'\t - {card.name}')
-        # else:
-        #   if next_three[0].function == 'exploding_kitten'
-        #     self.play_attack
+        self.next_three = game.deck.deck[-1:-4:-1]
 
     def check_pair_exist(self, first_card):
         pair_count = 0
@@ -354,7 +347,6 @@ class Turn():
 
     def attack_end(self):
         for _ in range(self.extra_opponent_turn):
-            
             self.game.take_turn(self.opponent)
 
     def end_turn(self):
@@ -371,7 +363,6 @@ class ComputerTurn(Turn):
         super().__init__(player, opponent, game)
         self.play_cards()
         self.end_turn()
-        self.next_three_cards = []
 
     def end_turn(self):
         super().end_turn()
@@ -388,43 +379,52 @@ class ComputerTurn(Turn):
 
     def get_playable_card(self):
         functions = [card.function for card in self.player.hand.cards]
+        names = [card.name for card in self.player.hand.cards]
+        pair_cards_in_hand = [card.name for card in self.player.hand.cards if card.function == 'pair_card']
 
-        # conditional_1 = 'see_the_future' in functions and
-        # ('attack' in functions or 'skip' in functions or 'shuffle'
-        # in functions)
-        play_2 = self.check_pair()								
-        play_3 = 'favor' in functions
-        play_4 = 'attack' in functions
+        def check_see_future():
+            return ('see_the_future') in functions and (
+                'attack' in functions or
+                'skip' in functions or
+                'shuffle' in functions)
 
-        if play_3:
+        def check_pair():
+            for card_template in Card.pair_types:
+                if pair(names, card_template):
+                    return True 
+            return False
+
+        def get_pair_index():
+            for card_template in Card.pair_types:
+                if pair(names, card_template):
+                    return names.index(card_template)
+
+        def pair(hand, pair_card):
+            return hand.count(pair_card) >= 2
+
+        if check_see_future():
+            return functions.index('see_the_future')
+        elif 'favor' in functions:
             return functions.index('favor')
-        elif play_2:
-            return self.get_pair_index() 
-        elif play_4:
+        elif check_pair():
+            return get_pair_index() 
+        elif 'attack' in functions:
             return functions.index('attack')
 
-        # def play_future_sequence(self, functions_list):
-        #       see_the_future_index = functions.index('see_the_future')
-        #       attack_index = functions.index('attack')
-        #       skip_index = functions.index('skip')
-        #       shuffle_index = functions.index('shuffle')
-    def check_pair(self):
-        pair_cards_in_hand = [card.name for card in self.player.hand.cards if card.function == 'pair_card']
+    def play_future(self, game):
+        functions = [card.function for card in self.player.hand.cards]
+        super().play_future(game)
 
-        for card_template in Card.pair_types:
-            if pair_cards_in_hand.count(card_template) >= 2:
-                return True 
-        return False
-
-    def get_pair_index(self):
-        pair_cards_in_hand = [card.name for card in self.player.hand.cards if card.function == 'pair_card']
-        names = [card.name for card in self.player.hand.cards]
-
-        for card_template in Card.pair_types:
-            if pair_cards_in_hand.count(card_template) >= 2: 
-                return names.index(card_template)
-
-				
+        if self.next_three[0].function == 'exploding_kitten' or (
+                self.next_three[2].function == 'exploding_kitten'
+                ):
+            if 'skip' in functions:
+                activate_card(functions.index('skip'))
+            elif 'attack' in functions: 
+                activate_card(functions.index('attack'))
+            elif 'shuffle' in functions:
+                activate_card(functions.index('shuffle'))
+		
 
 
 
@@ -458,7 +458,11 @@ class HumanTurn(Turn):
             else:
                 break
 
-        
+    def play_future(self, game):
+        super().play_future(game)
+        print('\nThe next three cards are:')
+        for card in self.next_three:
+            print(f'\t - {card.name}')
 
     def get_input(self):
         self.player.hand.show_cards()
@@ -471,8 +475,9 @@ class HumanTurn(Turn):
     def end_turn(self):
         if self.game.quit:
             return
-        super().end_turn()
         print(f'\n- You drew: {self.player.hand.cards[-1]} -\n\n\n')
+        super().end_turn()
+        input('Press enter to continue')
 
         for _ in range(self.extra_opponent_turn):
             ComputerTurn(self.opponent, self.player, self.game)
@@ -495,10 +500,26 @@ class Game():
         self.exploded = False
         self.quit = False
         input(f'\n\nPress enter to continue  ')
+        self.list_rules()
+        input(f'\n\nPress enter to continue  ')
         
 
     def list_rules(self):
-        pass
+        rules = '''
+        
+        This is a two player game (you versus the computer). 
+        Each player will be dealt 5 cards. 
+
+        During a turn, you can play as many cards as you want.
+        Your turn ends when you draw a card. 
+
+        If you draw an Exploding Kitten, you lose! 
+        UNLESS you have a Defuse card and are able to defuse the kitten. 
+
+        To play a cat card (e.g. Cattermelon), you must have two in your hand. 
+
+        '''
+        print(rules)
 
     def explode(self, player):
         print('\n\n')
